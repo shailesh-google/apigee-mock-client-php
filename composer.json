@@ -41,10 +41,7 @@
         "optimize-autoloader": true,
         "update-with-dependencies": true,
         "preferred-install": "dist",
-        "sort-packages": true,
-        "allow-plugins": {
-            "php-http/discovery": true
-        }
+        "sort-packages": true
     },
     "minimum-stability": "dev"
 }
