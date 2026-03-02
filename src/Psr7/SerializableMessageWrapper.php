@@ -69,19 +69,19 @@ class SerializableMessageWrapper {
   /**
    * {@inheritdoc}
    */
-  public function __sleep() {
+  public function __serialize(): array {
     // Populate the body variable for serialization.
     $this->body = (string) $this->message->getBody();
 
-    return ['body', 'message'];
+    return ['body' => $this->body, 'message' => $this->message];
   }
 
   /**
    * {@inheritdoc}
    */
-  public function __wakeup() {
+  public function __unserialize(array $data): void {
     // Restore the response with the original body.
-    $this->message = $this->message->withBody(Utils::streamFor($this->body));
+    $this->message = $data['message']->withBody(Utils::streamFor($data['body']));
 
     unset($this->body);
   }
