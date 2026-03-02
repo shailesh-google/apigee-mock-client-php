@@ -18,34 +18,25 @@
 
 namespace Apigee\MockClient\Psr7;
 
-use Psr\Http\Message\MessageInterface;
+use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\Utils;
+use Psr\Http\Message\MessageInterface;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * The serializable HTTP message wrapper.
  *
  * This class is necessary because the stream in the guzzle request/response
- * classes are not serializable for database storage. Streams references are
- * lost on serialization we compensate by storing the body contents to a
- * property and re-instantiating the decorated response with the body contents
- * during deserialization.
+ * classes are not serializable for database storage. This class deconstructs a
+ * response into primitive types for serialization and reconstructs it on
+ * unserialization.
  */
 class SerializableMessageWrapper {
 
   /**
-   * The HTTP message body.
-   *
-   * This variable is only used during serialization. It is populated upon
-   * serialization and unset after deserialization.
-   *
-   * @var string
-   */
-  private $body;
-
-  /**
    * The original HTTP message.
    *
-   * @var \Psr\Http\Message\MessageInterface
+   * @var \Psr\Http\Message\ResponseInterface
    */
   private $message;
 
@@ -56,6 +47,9 @@ class SerializableMessageWrapper {
    *   The original HTTP message.
    */
   public function __construct(MessageInterface $message) {
+    if (!$message instanceof ResponseInterface) {
+        throw new \InvalidArgumentException('SerializableMessageWrapper only supports ResponseInterface objects.');
+    }
     $this->message = $message;
   }
 
@@ -70,20 +64,26 @@ class SerializableMessageWrapper {
    * {@inheritdoc}
    */
   public function __serialize(): array {
-    // Populate the body variable for serialization.
-    $this->body = (string) $this->message->getBody();
-
-    return ['body' => $this->body, 'message' => $this->message];
+    return [
+        'body' => (string) $this->message->getBody(),
+        'protocol_version' => $this->message->getProtocolVersion(),
+        'headers' => $this->message->getHeaders(),
+        'status_code' => $this->message->getStatusCode(),
+        'reason_phrase' => $this->message->getReasonPhrase(),
+    ];
   }
 
   /**
    * {@inheritdoc}
    */
   public function __unserialize(array $data): void {
-    // Restore the response with the original body.
-    $this->message = $data['message']->withBody(Utils::streamFor($data['body']));
-
-    unset($this->body);
+    $this->message = new Response(
+        $data['status_code'],
+        $data['headers'],
+        Utils::streamFor($data['body']),
+        $data['protocol_version'],
+        $data['reason_phrase']
+    );
   }
 
 }
