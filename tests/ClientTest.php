@@ -60,7 +60,7 @@ class ClientTest extends TestCase {
     $response = $this->createMock(ResponseInterface::class);
     $this->client->on($request_matcher, $response);
 
-    static::assertSame($response, $this->client->sendRequest(new Request('GET', 'https://example.com/foo')));
+    static::assertEquals($response, $this->client->sendRequest(new Request('GET', 'https://example.com/foo')));
 
     // Test trying to add an invalid matchable result.
     $this->expectException(\InvalidArgumentException::class);

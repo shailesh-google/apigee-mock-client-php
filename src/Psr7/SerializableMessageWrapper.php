@@ -41,6 +41,13 @@ class SerializableMessageWrapper {
   private $message;
 
   /**
+   * The serialized message data.
+   *
+   * @var array
+   */
+  private $message_data;
+
+  /**
    * SerializableResponseWrapper constructor.
    *
    * @param \Psr\Http\Message\MessageInterface $message
@@ -57,6 +64,9 @@ class SerializableMessageWrapper {
    * Get the original HTTP message.
    */
   public function getMessage() {
+    if (!isset($this->message) && isset($this->message_data)) {
+      $this->__unserialize($this->message_data);
+    }
     return $this->message;
   }
 
@@ -64,25 +74,27 @@ class SerializableMessageWrapper {
    * {@inheritdoc}
    */
   public function __serialize(): array {
-    return [
-        'body' => (string) $this->message->getBody(),
-        'protocol_version' => $this->message->getProtocolVersion(),
-        'headers' => $this->message->getHeaders(),
+    $this->message_data = [
         'status_code' => $this->message->getStatusCode(),
         'reason_phrase' => $this->message->getReasonPhrase(),
+        'protocol_version' => $this->message->getProtocolVersion(),
+        'headers' => $this->message->getHeaders(),
+        'body' => (string) $this->message->getBody(),
     ];
+    return ['message_data' => $this->message_data];
   }
 
   /**
    * {@inheritdoc}
    */
   public function __unserialize(array $data): void {
+    $this->message_data = $data['message_data'];
     $this->message = new Response(
-        $data['status_code'],
-        $data['headers'],
-        Utils::streamFor($data['body']),
-        $data['protocol_version'],
-        $data['reason_phrase']
+        $this->message_data['status_code'] ?? 200,
+        $this->message_data['headers'] ?? [],
+        Utils::streamFor($this->message_data['body']),
+        $this->message_data['protocol_version'],
+        $this->message_data['reason_phrase'] ?? ''
     );
   }
 

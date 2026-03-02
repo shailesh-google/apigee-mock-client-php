@@ -27,7 +27,10 @@ class MatchableResult implements MatchableResultInterface {
 
   protected $matcher;
 
-  public function __construct(RequestMatcher $requestMatcher, callable $result) {
+  public function __construct(RequestMatcher $requestMatcher, $result) {
+    if (!is_callable($result) && !is_string($result)) {
+      throw new \InvalidArgumentException('Result must be a callable or a string.');
+    }
     $this->matcher = $requestMatcher;
     $this->result = $result;
   }
@@ -37,7 +40,8 @@ class MatchableResult implements MatchableResultInterface {
   }
 
   public function __invoke() {
-    return ($this->result)();
+    $result = is_string($this->result) ? \Opis\Closure\unserialize($this->result) : $this->result;
+    return ($result)();
   }
 
 }
