@@ -18,13 +18,14 @@
 
 namespace Apigee\MockClient\Tests;
 
+use Twig\Environment;
+use Twig\Loader\ArrayLoader;
 use Apigee\MockClient\Exception\MatchingGeneratorNotFoundException;
 use Apigee\MockClient\Generator\TwigGenerator;
 use Apigee\MockClient\Generator\TwigSource;
 use Apigee\MockClient\ResponseFactory;
 use Apigee\MockClient\ResponseGeneratorInterface;
 use PHPUnit\Framework\TestCase;
-use Prophecy\Argument;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -41,14 +42,19 @@ class ResponseFactoryTest extends TestCase {
     $source->data = \random_bytes(16);
 
     // Create a mock generator.
-    $generator = $this->prophesize(ResponseGeneratorInterface::class);
-    $generator->appliesToSource($source)->willReturn(TRUE);
-    $generator->appliesToSource(Argument::any())->willReturn(FALSE);
-    $generator->generateFromSource($source)->willReturn($this->createMock(ResponseInterface::class));
+    $generator = $this->createMock(ResponseGeneratorInterface::class);
+    $generator->method('appliesToSource')
+              ->willReturnMap([
+                  [$source, TRUE],
+                  [$this->anything(), FALSE],
+              ]);
+    $generator->method('generateFromSource')
+              ->with($source)
+              ->willReturn($this->createMock(ResponseInterface::class));
 
     // Creates a response factory.
     $factory = new ResponseFactory();
-    $factory->addGenerator($generator->reveal());
+    $factory->addGenerator($generator);
 
     // Get a response for the source object.
     $response = $factory->generateResponse($source);
@@ -68,7 +74,7 @@ class ResponseFactoryTest extends TestCase {
     $uuid = uniqid();
 
     // Create a twig generator.
-    $generator = new TwigGenerator(new \Twig_Environment(new \Twig_Loader_String()));
+    $generator = new TwigGenerator(new Environment(new ArrayLoader()));
 
     // Creates a response factory.
     $factory = new ResponseFactory();

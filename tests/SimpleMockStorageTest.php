@@ -55,7 +55,7 @@ class SimpleMockStorageTest extends TestCase {
    */
   protected $matchableResult;
 
-  public function setup() {
+  public function setUp(): void {
     $this->storage = new SimpleMockStorage();
     $generator = MessageFactoryDiscovery::find();
     $this->response = $generator->createResponse();

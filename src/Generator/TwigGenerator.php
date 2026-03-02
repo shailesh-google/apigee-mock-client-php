@@ -53,9 +53,11 @@ class TwigGenerator implements ResponseGeneratorInterface {
    * {@inheritdoc}
    */
   public function generateFromSource($source) {
-    $content = $this->twig->render($source->getTemplate(), $source->getContext());
+    // Use createTemplate for rendering a string as a template.
+    $template = $this->twig->createTemplate($source->getTemplate());
+    $content = $template->render($source->getContext());
 
-    return new Response($source->getResponseCode(), $source->getHeaders(), $content) ;
+    return new Response($source->getResponseCode(), $source->getHeaders(), $content);
   }
 
 }

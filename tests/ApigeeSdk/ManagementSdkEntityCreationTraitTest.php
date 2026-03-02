@@ -36,7 +36,7 @@ class ManagementSdkEntityCreationTraitTest extends TestCase {
   use ManagementSdkEntityCreationTrait;
   use RandomStringGeneratorTrait;
 
-  public function setUp() {
+  public function setUp(): void {
     parent::setUp();
 
     $this->mockClient = new MockClient();
