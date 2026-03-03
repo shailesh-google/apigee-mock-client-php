@@ -18,9 +18,11 @@
 
 namespace Apigee\MockClient\Psr7;
 
+use GuzzleHttp\Psr7\Request;
 use GuzzleHttp\Psr7\Response;
 use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\MessageInterface;
+use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -28,24 +30,17 @@ use Psr\Http\Message\ResponseInterface;
  *
  * This class is necessary because the stream in the guzzle request/response
  * classes are not serializable for database storage. This class deconstructs a
- * response into primitive types for serialization and reconstructs it on
- * unserialization.
+ * message into primitive types for serialization and reconstructs it on
+ * unserialization. It supports both RequestInterface and ResponseInterface.
  */
 class SerializableMessageWrapper {
 
   /**
    * The original HTTP message.
    *
-   * @var \Psr\Http\Message\ResponseInterface
+   * @var \Psr\Http\Message\MessageInterface
    */
   private $message;
-
-  /**
-   * The serialized message data.
-   *
-   * @var array
-   */
-  private $message_data;
 
   /**
    * SerializableResponseWrapper constructor.
@@ -54,19 +49,13 @@ class SerializableMessageWrapper {
    *   The original HTTP message.
    */
   public function __construct(MessageInterface $message) {
-    if (!$message instanceof ResponseInterface) {
-        throw new \InvalidArgumentException('SerializableMessageWrapper only supports ResponseInterface objects.');
-    }
     $this->message = $message;
   }
 
   /**
    * Get the original HTTP message.
    */
-  public function getMessage() {
-    if (!isset($this->message) && isset($this->message_data)) {
-      $this->__unserialize($this->message_data);
-    }
+  public function getMessage(): MessageInterface {
     return $this->message;
   }
 
@@ -74,28 +63,58 @@ class SerializableMessageWrapper {
    * {@inheritdoc}
    */
   public function __serialize(): array {
-    $this->message_data = [
-        'status_code' => $this->message->getStatusCode(),
-        'reason_phrase' => $this->message->getReasonPhrase(),
-        'protocol_version' => $this->message->getProtocolVersion(),
-        'headers' => $this->message->getHeaders(),
-        'body' => (string) $this->message->getBody(),
+    $data = [
+      'body' => (string) $this->message->getBody(),
+      'protocol_version' => $this->message->getProtocolVersion(),
+      'headers' => $this->message->getHeaders(),
     ];
-    return ['message_data' => $this->message_data];
+
+    if ($this->message instanceof RequestInterface) {
+      $data['is_request'] = TRUE;
+      $data['method'] = $this->message->getMethod();
+      $data['uri'] = (string) $this->message->getUri();
+    }
+
+    if ($this->message instanceof ResponseInterface) {
+      $data['is_response'] = TRUE;
+      $data['status_code'] = $this->message->getStatusCode();
+      $data['reason_phrase'] = $this->message->getReasonPhrase();
+    }
+
+    return ['message_data' => $data];
   }
 
   /**
    * {@inheritdoc}
    */
   public function __unserialize(array $data): void {
-    $this->message_data = $data['message_data'];
-    $this->message = new Response(
-        $this->message_data['status_code'] ?? 200,
-        $this->message_data['headers'] ?? [],
-        Utils::streamFor($this->message_data['body']),
-        $this->message_data['protocol_version'],
-        $this->message_data['reason_phrase'] ?? ''
-    );
+    $messageData = $data['message_data'];
+    $body = Utils::streamFor($messageData['body']);
+    $headers = $messageData['headers'] ?? [];
+    $protocolVersion = $messageData['protocol_version'];
+
+    if (!empty($messageData['is_request'])) {
+      $this->message = new Request(
+        $messageData['method'],
+        $messageData['uri'],
+        $headers,
+        $body,
+        $protocolVersion
+      );
+    }
+    elseif (!empty($messageData['is_response'])) {
+      $this->message = new Response(
+        $messageData['status_code'] ?? 200,
+        $headers,
+        $body,
+        $protocolVersion,
+        $messageData['reason_phrase'] ?? ''
+      );
+    }
+    else {
+      // Fallback for older data or unknown types.
+      $this->message = new Response(200, $headers, $body, $protocolVersion);
+    }
   }
 
 }
