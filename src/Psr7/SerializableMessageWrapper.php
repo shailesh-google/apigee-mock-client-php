@@ -24,6 +24,7 @@ use GuzzleHttp\Psr7\Utils;
 use Psr\Http\Message\MessageInterface;
 use Psr\Http\Message\RequestInterface;
 use Psr\Http\Message\ResponseInterface;
+use Psr\Http\Message\StreamInterface;
 
 /**
  * The serializable HTTP message wrapper.
@@ -60,11 +61,23 @@ class SerializableMessageWrapper {
   }
 
   /**
+   * Reads a stream and returns its contents.
+   */
+  private function getBodyContents(StreamInterface $stream): string {
+      if ($stream->isSeekable()) {
+          $stream->rewind();
+      }
+      return $stream->getContents();
+  }
+
+  /**
    * {@inheritdoc}
    */
   public function __serialize(): array {
+    $body = $this->getBodyContents($this->message->getBody());
+
     $data = [
-      'body' => (string) $this->message->getBody(),
+      'body' => $body,
       'protocol_version' => $this->message->getProtocolVersion(),
       'headers' => $this->message->getHeaders(),
     ];
