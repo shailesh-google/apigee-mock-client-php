@@ -7,7 +7,7 @@
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
  *
- *      https://www.apache.org/licenses/LICENSE-2.0
+ * https://www.apache.org/licenses/LICENSE-2.0
  *
  * Unless required by applicable law or agreed to in writing, software
  * distributed under the License is distributed on an "AS IS" BASIS,
@@ -25,6 +25,7 @@ use Apigee\MockClient\ResponseFactory;
 use Apigee\MockClient\ResponseGeneratorInterface;
 use PHPUnit\Framework\TestCase;
 use Prophecy\Argument;
+use Prophecy\PhpUnit\ProphecyTrait;
 use Psr\Http\Message\ResponseInterface;
 
 /**
@@ -32,6 +33,7 @@ use Psr\Http\Message\ResponseInterface;
  */
 class ResponseFactoryTest extends TestCase {
 
+  use ProphecyTrait;
   /**
    * Test the response factory can find a generator for an object or throw an
    * error.
