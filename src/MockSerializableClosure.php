@@ -3,6 +3,7 @@
 use Closure;
 use function Opis\Closure\serialize as opis_serialize;
 use function Opis\Closure\unserialize as opis_unserialize;
+use Psr\Http\Message\ResponseInterface;
 
 /**
  * This class acts as a wrapper for a closure, and allows it to be serialized.
@@ -70,9 +71,20 @@ class MockSerializableClosure implements \Serializable
      */
     public function __serialize(): array
     {
-        return [
-            'closure_string' => opis_serialize($this->closure)
-        ];
+        $response = ($this->closure)();
+        if ($response instanceof ResponseInterface) {
+            $data = [
+                'statusCode' => $response->getStatusCode(),
+                'headers' => $response->getHeaders(),
+                'body' => (string) $response->getBody(),
+                'protocolVersion' => $response->getProtocolVersion(),
+                'reasonPhrase' => $response->getReasonPhrase(),
+            ];
+        } else {
+            $data = $response;
+        }
+
+        return ['data' => $data];
     }
 
     /**
@@ -82,7 +94,22 @@ class MockSerializableClosure implements \Serializable
      */
     public function __unserialize(array $data): void
     {
-        $this->closure = opis_unserialize($data['closure_string']);
+        if (is_array($data['data']) && isset($data['data']['statusCode'])) {
+            $response = new \GuzzleHttp\Psr7\Response(
+                $data['data']['statusCode'],
+                $data['data']['headers'],
+                $data['data']['body'],
+                $data['data']['protocolVersion'],
+                $data['data']['reasonPhrase']
+            );
+            $this->closure = function () use ($response) {
+                return $response;
+            };
+        } else {
+            $this->closure = function () use ($data) {
+                return $data['data'];
+            };
+        }
     }
 
     /**
