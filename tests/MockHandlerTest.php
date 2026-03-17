@@ -35,7 +35,7 @@ class MockHandlerTest extends TestCase {
 
   private $generic_request;
 
-  function setUp() {
+  function setUp(): void {
     parent::setUp();
 
     $this->generic_request = new Request('GET', 'http://example.com');
